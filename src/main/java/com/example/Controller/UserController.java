@@ -8,6 +8,7 @@ import com.example.util.ValidateCodeUtils;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang.StringUtils;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -25,6 +26,10 @@ public class UserController {
     @Autowired
     private UserService userService;
 
+    @Autowired
+    private StringRedisTemplate stringRedisTemplate;
+
+
     @PostMapping
     public R<String> senMsg(@RequestBody User user, HttpSession session){
 
@@ -32,8 +37,6 @@ public class UserController {
         if(StringUtils.isNotEmpty(phone)){
             String code = ValidateCodeUtils.generateValidateCode(4).toString();
             log.info("code={}",code);
-
-
             session.setAttribute(phone,code);
             return R.success("短信发送成功");
         }
