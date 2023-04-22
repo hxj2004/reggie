@@ -13,10 +13,12 @@ import com.example.common.BaseContext;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.web.bind.annotation.*;
 import org.w3c.dom.ls.LSInput;
 
 import java.util.List;
+import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
 @Slf4j
@@ -29,11 +31,16 @@ public class DishController {
     private DishFlavorService dishFlavorService;
     @Autowired
     private CategoryService categoryService;
-
+    @Autowired
+    private RedisTemplate redisTemplate;
     @PostMapping
     public R<String> save(@RequestBody DishDto dishDto){
         log.info("添加{}",dishDto);
         dishService.saveWithFlavor(dishDto);
+        //删除对于分类缓存
+        String key = "dish_" + dishDto.getCategoryId() + "_1";
+        redisTemplate.delete(key);
+
         return R.success("新增菜品成功");
     }
 
@@ -84,9 +91,12 @@ public class DishController {
     }
     @PutMapping
     public R<String> update(@RequestBody DishDto dishDto){
-        log.info("添加{}",dishDto);
+        log.info("修改{}",dishDto);
         dishService.updateWithFlavor(dishDto);
-        return R.success("新增菜品成功");
+        //删除对于分类缓存
+        String key = "dish_" + dishDto.getCategoryId() + "_1";
+        redisTemplate.delete(key);
+        return R.success("修改菜品成功");
     }
 
    /* @GetMapping("/list")
@@ -110,7 +120,19 @@ public class DishController {
    @GetMapping("/list")
    public R<List<DishDto>> list(Dish dish){
        log.info("获取菜品");
+       List<DishDto> dishDtoList = null;
 
+       //获取redis中对应的分类是否存在
+       //设置key值来，从redis中查询：categoryid为分类id，status为是否停售
+       String key = "dish_" + dish.getCategoryId() + "_" + dish.getStatus();
+
+       //转换为对应的数据
+       dishDtoList = (List<DishDto>)redisTemplate.opsForValue().get(key);
+
+       //如果存在就直接把数据返回
+       if(dishDtoList != null){
+           return R.success(dishDtoList);
+       }
        //获取菜品，菜品条件器
        LambdaQueryWrapper<Dish> queryWrapper = new LambdaQueryWrapper<>();
        //根据菜品分类id来查找对应菜品
@@ -122,7 +144,7 @@ public class DishController {
        //查询
        List<Dish> list = dishService.list(queryWrapper);
 
-       List<DishDto> dishDtoList = list.stream().map((item) -> {
+       dishDtoList = list.stream().map((item) -> {
            DishDto dishDto = new DishDto();
            //把item的数据考到dishDto里面
            BeanUtils.copyProperties(item,dishDto);
@@ -144,6 +166,9 @@ public class DishController {
            //返回新结果
            return dishDto;
        }).collect(Collectors.toList());
+       //如果不存在，把数据查出来，加入到缓存，并返回数据
+
+       redisTemplate.opsForValue().set(key,dishDtoList,60, TimeUnit.MINUTES);
 
        return R.success(dishDtoList);
    }
