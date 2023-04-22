@@ -33,6 +33,8 @@ public class DishController {
     private CategoryService categoryService;
     @Autowired
     private RedisTemplate redisTemplate;
+
+
     @PostMapping
     public R<String> save(@RequestBody DishDto dishDto){
         log.info("添加{}",dishDto);

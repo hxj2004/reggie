@@ -18,6 +18,10 @@ spring:
     host: localhost
     port: 6379
     database: 0
+  cache:
+    redis:
+#      毫秒，缓存过期时间
+      time-to-live: 1800000
 #    password:
 
 

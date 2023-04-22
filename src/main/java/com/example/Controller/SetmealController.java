@@ -13,6 +13,8 @@ import com.example.Service.SetmealService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.ArrayList;
@@ -28,6 +30,7 @@ public class SetmealController {
     @Autowired
     private CategoryService categoryService;
     @PostMapping
+    @CacheEvict(value = "setmealCeche", allEntries = true)
     public R<String> save(@RequestBody SetmealDto setmealDto){
         log.info("添加套餐{}",setmealDto);
         //多表操作
@@ -69,6 +72,7 @@ public class SetmealController {
     }
 //    删除套餐
     @DeleteMapping
+    @CacheEvict(value = "setmealCeche", allEntries = true)
     public R<String> delete(@RequestParam List<Long> ids){
         log.info("ids:{}",ids);
         setmealService.removeWidthDish(ids);
@@ -76,6 +80,8 @@ public class SetmealController {
     }
 
     @GetMapping("/list")
+    //缓存注解,缓存分类未setmealCache，key为"#setmeal.categoryId + '_' + #setmeal.status"就是分类id和是否停售
+    @Cacheable(value = "setmealCache", key = "#setmeal.categoryId + '_' + #setmeal.status")
     public R<List<Setmeal>> list(Setmeal setmeal){
         log.info("查询套餐数据",setmeal);
         LambdaQueryWrapper<Setmeal> queryWrapper = new LambdaQueryWrapper<>();
